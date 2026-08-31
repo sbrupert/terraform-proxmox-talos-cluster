@@ -1,0 +1,16 @@
+.DS_Store
+
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+kubeconfig
+talosconfig
+talos_kubeconfig
