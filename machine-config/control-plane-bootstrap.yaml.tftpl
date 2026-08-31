@@ -1,0 +1,16 @@
+cluster:
+  allowSchedulingOnControlPlanes: ${allow_control_plane_scheduling}
+  network:
+    cni:
+      name: none
+  proxy:
+    disabled: true
+%{ if length(extra_manifests) > 0 ~}
+  extraManifests:
+%{ for manifest_url in extra_manifests ~}
+    - ${manifest_url}
+%{ endfor ~}
+%{ endif ~}
+  inlineManifests:
+    - name: cilium
+      contents: |${indent(8, format("\n%s", cilium_manifest))}

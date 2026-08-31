@@ -1,0 +1,57 @@
+machine:
+  kernel:
+    modules:
+      - name: iscsi_tcp
+  kubelet:
+    nodeIP:
+      validSubnets:
+        - ${management_subnet}
+    extraArgs:
+      rotate-server-certificates: true
+    extraMounts:
+      - destination: /etc/iscsi
+        type: bind
+        source: /etc/iscsi
+        options:
+          - bind
+          - rshared
+      - destination: /var/lib/iscsi
+        type: bind
+        source: /var/lib/iscsi
+        options:
+          - bind
+          - rshared
+  network:
+    interfaces:
+%{ for nic in nics ~}
+      - interface: ${nic.interface}
+        addresses:
+          - ${nic.address}
+%{ if nic.gateway != null ~}
+        routes:
+          - network: 0.0.0.0/0
+            gateway: ${nic.gateway}
+%{ endif ~}
+%{ endfor ~}
+%{ if length(dns_servers) > 0 ~}
+    nameservers:
+%{ for dns_server in dns_servers ~}
+      - ${dns_server}
+%{ endfor ~}
+%{ endif ~}
+cluster:
+  etcd:
+    advertisedSubnets:
+      - ${management_subnet}
+---
+apiVersion: v1alpha1
+kind: HostnameConfig
+hostname: ${hostname}
+auto: off
+%{ if layer2_vip != null ~}
+---
+apiVersion: v1alpha1
+kind: Layer2VIPConfig
+name: ${layer2_vip.ip}
+link: ${layer2_vip.interface}
+%{ endif ~}

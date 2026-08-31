@@ -1,0 +1,19 @@
+version: 1
+config:
+%{ for nic in nics ~}
+  - type: physical
+    name: ${nic.interface}
+    subnets:
+      - type: static
+        address: ${nic.ip}
+        netmask: ${nic.netmask}
+%{ if nic.gateway != null ~}
+        gateway: ${nic.gateway}
+%{ endif ~}
+%{ if length(nic.dns_servers) > 0 ~}
+        dns_nameservers:
+%{ for dns_server in nic.dns_servers ~}
+          - ${dns_server}
+%{ endfor ~}
+%{ endif ~}
+%{ endfor ~}
