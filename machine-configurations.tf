@@ -35,6 +35,13 @@ data "talos_machine_configuration" "this" {
         }
       )
     ],
+    var.machine_features == null ? [] : [
+      yamlencode({
+        machine = {
+          features = yamldecode(var.machine_features)
+        }
+      })
+    ],
     each.value.machine_type == "controlplane" ? [
       sensitive(templatefile(
         "${path.module}/machine-config/control-plane-bootstrap.yaml.tftpl",

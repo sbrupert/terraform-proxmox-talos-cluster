@@ -190,6 +190,17 @@ variable "nodes" {
   }
 }
 
+variable "machine_features" {
+  description = "Optional YAML mapping of Talos machine.features, applied to every node. Talos validates the feature names and values."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.machine_features == null ? true : can(yamldecode(var.machine_features))
+    error_message = "machine_features must be valid YAML when set."
+  }
+}
+
 variable "bootstrap" {
   description = "Whether to run Talos configuration apply, one-time cluster bootstrap, and kubeconfig retrieval. Set false to create and inspect nodes first."
   type        = bool

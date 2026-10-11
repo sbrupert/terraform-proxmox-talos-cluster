@@ -89,6 +89,7 @@ The primary inputs are:
 | `proxmox` | Existing image ID, datastores, guest-agent policy, and role-level VM profiles |
 | `networks` | Named network definitions, including the required management network |
 | `nodes` | Control-plane and worker membership, Proxmox placement, optional VM IDs, and addresses |
+| `machine_features` | Optional YAML mapping added under `machine.features` on every Talos node |
 | `bootstrap` | Whether to apply Talos configuration, bootstrap the cluster, wait for health, and retrieve kubeconfig |
 
 Important network rules:
@@ -100,6 +101,21 @@ Important network rules:
 - etcd advertised subnets and kubelet valid node-IP subnets derive from the management CIDR.
 
 Setting `bootstrap = false` creates the snippets and VMs but stops before live Talos configuration application. This is useful for inspecting generated configuration and first-boot behavior.
+
+To configure Talos machine features, pass YAML containing the entries **inside** `machine.features`:
+
+```hcl
+machine_features = <<-YAML
+  kubernetesTalosAPIAccess:
+    enabled: true
+    allowedRoles:
+      - os:etcd:backup
+    allowedKubernetesNamespaces:
+      - default
+YAML
+```
+
+The module checks that the input can be decoded as YAML and includes it in a Talos configuration patch for every node. Talos validates the feature names and values.
 
 ## Image ownership
 
@@ -254,7 +270,7 @@ terraform-docs .
 | ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.10.0, < 2.0.0 |
 | <a name="requirement_helm"></a> [helm](#requirement\_helm) | 3.2.0 |
-| <a name="requirement_proxmox"></a> [proxmox](#requirement\_proxmox) | 0.103.0 |
+| <a name="requirement_proxmox"></a> [proxmox](#requirement\_proxmox) | >= 0.103.0 |
 | <a name="requirement_talos"></a> [talos](#requirement\_talos) | 0.11.0 |
 
 ## Providers
@@ -269,10 +285,10 @@ terraform-docs .
 
 | Name | Type |
 | ---- | ---- |
-| [proxmox_virtual_environment_file.nocloud_meta_data](https://registry.terraform.io/providers/bpg/proxmox/0.103.0/docs/resources/virtual_environment_file) | resource |
-| [proxmox_virtual_environment_file.nocloud_network_config](https://registry.terraform.io/providers/bpg/proxmox/0.103.0/docs/resources/virtual_environment_file) | resource |
-| [proxmox_virtual_environment_file.nocloud_user_data](https://registry.terraform.io/providers/bpg/proxmox/0.103.0/docs/resources/virtual_environment_file) | resource |
-| [proxmox_virtual_environment_vm.node](https://registry.terraform.io/providers/bpg/proxmox/0.103.0/docs/resources/virtual_environment_vm) | resource |
+| [proxmox_virtual_environment_file.nocloud_meta_data](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/virtual_environment_file) | resource |
+| [proxmox_virtual_environment_file.nocloud_network_config](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/virtual_environment_file) | resource |
+| [proxmox_virtual_environment_file.nocloud_user_data](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/virtual_environment_file) | resource |
+| [proxmox_virtual_environment_vm.node](https://registry.terraform.io/providers/bpg/proxmox/latest/docs/resources/virtual_environment_vm) | resource |
 | [talos_cluster_kubeconfig.this](https://registry.terraform.io/providers/siderolabs/talos/0.11.0/docs/resources/cluster_kubeconfig) | resource |
 | [talos_machine_bootstrap.this](https://registry.terraform.io/providers/siderolabs/talos/0.11.0/docs/resources/machine_bootstrap) | resource |
 | [talos_machine_configuration_apply.node](https://registry.terraform.io/providers/siderolabs/talos/0.11.0/docs/resources/machine_configuration_apply) | resource |
@@ -284,6 +300,7 @@ terraform-docs .
 | ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_bootstrap"></a> [bootstrap](#input\_bootstrap) | Whether to run Talos configuration apply, one-time cluster bootstrap, and kubeconfig retrieval. Set false to create and inspect nodes first. | `bool` | `true` | no |
 | <a name="input_cluster"></a> [cluster](#input\_cluster) | Talos cluster identity and high-level behavior. The Kubernetes API endpoint is derived from api\_vip or the first control-plane management IP unless endpoint\_url is set. | <pre>object({<br/>    name                           = string<br/>    api_vip                        = optional(string)<br/>    endpoint_url                   = optional(string)<br/>    allow_control_plane_scheduling = optional(bool, false)<br/>  })</pre> | n/a | yes |
+| <a name="input_machine_features"></a> [machine\_features](#input\_machine\_features) | Optional YAML mapping of Talos machine.features, applied to every node. Talos validates the feature names and values. | `string` | `null` | no |
 | <a name="input_networks"></a> [networks](#input\_networks) | Flat map of logical VM networks keyed by network name. The reserved management network is NIC0 and the only network allowed to define gateway/DNS. | <pre>map(object({<br/>    bridge           = string<br/>    cidr             = string<br/>    gateway          = optional(string)<br/>    dns_servers      = optional(list(string), [])<br/>    proxmox_firewall = optional(bool, false)<br/>  }))</pre> | n/a | yes |
 | <a name="input_nodes"></a> [nodes](#input\_nodes) | Talos nodes grouped by role and keyed by desired hostname. Node network maps reference top-level networks by name and provide the node IP for each network. | <pre>object({<br/>    controlplane = map(object({<br/>      host_node = string<br/>      vm_id     = optional(number)<br/>      networks  = map(string)<br/>    }))<br/><br/>    worker = optional(map(object({<br/>      host_node = string<br/>      vm_id     = optional(number)<br/>      networks  = map(string)<br/>    })), {})<br/>  })</pre> | n/a | yes |
 | <a name="input_proxmox"></a> [proxmox](#input\_proxmox) | Existing Proxmox import image file ID, storage, snippets, guest-agent policy, and role-level VM profile settings. | <pre>object({<br/>    image_file_id = string<br/><br/>    datastores = object({<br/>      vm_disks = string<br/>      snippets = string<br/>    })<br/><br/>    guest_agent = optional(object({<br/>      enabled = optional(bool, true)<br/>    }), {})<br/><br/>    vm_profiles = object({<br/>      controlplane = object({<br/>        cpu_cores    = number<br/>        memory_mb    = number<br/>        disk_size_gb = number<br/>      })<br/><br/>      worker = optional(object({<br/>        cpu_cores    = number<br/>        memory_mb    = number<br/>        disk_size_gb = number<br/>      }))<br/>    })<br/>  })</pre> | n/a | yes |
